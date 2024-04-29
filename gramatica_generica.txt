@@ -1,9 +1,8 @@
-variaveis:S,A
+variaveis:S
 inicial:S
-terminais:0,1
+terminais:a,b
 
 producoes
-S: A1A1A1A
-A: A1
-A: A0
-A: epsilon
+S: aSb
+S: S
+S: epsilon
