@@ -10,32 +10,6 @@ class GLC:
 
 
 # Função que verifica se a gramatica forneceida é valida
-def verifica_gramatica(gramatica_glc: GLC):
-    # caso o inicial não esteja no conjunto de variaveis:
-    if gramatica_glc.inicial['inicial'][0] not in gramatica_glc.variaveis['variaveis']:
-        return False
-    # verficicando as produções
-    for producao in gramatica_glc.producoes:
-        p = producao.split(":")
-        if len(p) > 2:  # formato inesperado
-            return False
-        # caso possua mais de uma variavel do lado esquerdo da produção
-        # Ou caso esse simbolo não esteja indicado no conjunto de variaveis
-        if len(p[0]) > 1 or p[0] not in gramatica_glc.variaveis['variaveis']:
-            return False
-        # verificando se o simbolo é uma variavel valida um não terminal valido
-        # Ou o 'epsilon'
-        p = str(p[1]).split()  # retirando o espaço em branco que tem na espcificação para verificar
-        # verifiando se as substituições estão no formato esperado
-        for i in range(0, len(p)):
-            if re.match('epsilon', p[i]):
-                continue
-            for simbolo in p[i]:
-                if simbolo not in gramatica_glc.variaveis['variaveis'] and simbolo not in gramatica_glc.terminais[
-                    'terminais']:
-                    return False
-
-    return True
 
 
 # função que ler o arquivo que contem a gramatica
@@ -70,42 +44,69 @@ def read_glc_from_file(path: str):
                 producoes.append(line)
                 continue
 
-        gramatica_glc = GLC()
+        gramatica = GLC()
         # Organiza cada string em dicionarios que representam cada conjunto:
         for line in conjuntos:
             chave = line.split(":")
             valores = chave[1].split(",")
             if re.match("variaveis", chave[0]):
-                gramatica_glc.variaveis = {chave[0]: valores}
+                gramatica.variaveis = {chave[0]: valores}
             elif re.match("terminais", chave[0]):
-                gramatica_glc.terminais = {chave[0]: valores}
+                gramatica.terminais = {chave[0]: valores}
             elif re.match("inicial", chave[0]):
-                gramatica_glc.inicial = {chave[0]: valores}
+                gramatica.inicial = {chave[0]: valores}
             else:
                 print("arquivo com formato inesperado!")
                 return False
         # Organiza todas as produções da gramatia em um array
-        gramatica_glc.producoes = producoes[1:]
+        gramatica.producoes = producoes[1:]
 
         # verifica o formato da gramatica
-        if not verifica_gramatica(gramatica_glc):
+        if not verifica_gramatica(gramatica):
             print("Os dados no arquivo não representam uma gramatica livre de contexto valida!")
             return False
-        return gramatica_glc
+        return gramatica
     except Exception:
         print("Erro inesperado no formato do arquivo!")
         return False
 
 
-def fast_mode(gramatica: GLC):
+def verifica_gramatica(gramatica: GLC):
+    # caso o inicial não esteja no conjunto de variaveis:
+    if gramatica.inicial['inicial'][0] not in gramatica.variaveis['variaveis']:
+        return False
+    # verficicando as produções
+    for producao in gramatica.producoes:
+        p = producao.split(":")
+        if len(p) > 2:  # formato inesperado
+            return False
+        # caso possua mais de uma variavel do lado esquerdo da produção
+        # Ou caso esse simbolo não esteja indicado no conjunto de variaveis
+        if len(p[0]) > 1 or p[0] not in gramatica.variaveis['variaveis']:
+            return False
+        # verificando se o simbolo é uma variavel valida um não terminal valido
+        # Ou o 'epsilon'
+        p = str(p[1]).split()  # retirando o espaço em branco que tem na espcificação para verificar
+        # verifiando se as substituições estão no formato esperado
+        for i in range(0, len(p)):
+            if re.match('epsilon', p[i]):
+                continue
+            for simbolo in p[i]:
+                if simbolo not in gramatica.variaveis['variaveis'] and simbolo not in gramatica.terminais['terminais']:
+                    return False
+
+    return True
+
+
+def fast_mode(garamticaglc: GLC):
     # criando a cadeia inicial
-    cadeia_atual = gramatica.inicial['inicial'][0]
-    productions = [gramatica.inicial['inicial'][0]]
+    cadeia_atual = garamticaglc.inicial['inicial'][0]
+    productions = [garamticaglc.inicial['inicial'][0]]
     # chama um metodo que gera codecs recursivamente:
-    generete_recursivo(cadeia_atual, gramatica, productions, 1)
+    generete_recursivo(cadeia_atual, garamticaglc, productions, '')
 
 
-def generete_recursivo(cadeia: str, gramatica: GLC, productions: list, contador: int):
+def generete_recursivo(cadeia: str, gramatica: GLC, productions: list, deriv: str):
     # encontrando o index do elemento que sera substituido
     index = find_the_most_left_no_terminal(cadeia, gramatica.variaveis)
 
@@ -146,24 +147,33 @@ def generete_recursivo(cadeia: str, gramatica: GLC, productions: list, contador:
     if index != -1:
         for element in list_of_producions:
             # guardando as produções escolhidas para mostrar as derivações
-            productions.append(element)
             # substituindo o não terminal mais a esquerda pela produção
             cadeia_nova = replace_once(cadeia, cadeia[index], element)
+            productions.append(cadeia_nova)
 
             if not cadeia_nova == '':
-                cadeia_final = generete_recursivo(cadeia_nova, gramatica, productions, contador)
+                cadeia_final = generete_recursivo(cadeia_nova, gramatica, productions, deriv)
                 # verificando casos de parada
                 if cadeia_final is None:
+                    productions.pop()
                     continue
                 if cadeia_final == 0:
+                    productions.pop()
                     return 0
             # caso onde ele subistitui s por epsilon de primeira
             else:
                 cadeia_final = ''
 
-            # Mostrando as derivaçõe feitas e a cadeia final
-            print(f'{cadeia_final} -- Derivações: {productions}')
+            p = ''
+            for i in range(0, len(productions)):
+                p += f" {productions[i]}"
+                if i < len(productions) -1 :
+                    p += " ->"
+
+            print(f'{cadeia_final} -- Derivações: {p}')
             productions.pop()
+            # Mostrando as derivaçõe feitas e a cadeia final
+
 
             # perguntando se o ususario quer continuar:
             try:
@@ -175,9 +185,11 @@ def generete_recursivo(cadeia: str, gramatica: GLC, productions: list, contador:
                 choice = int(input("Numero invalido digite novamente: "))
             if choice == 0:
                 return 0
-    #retornando cadeia sem variaveis:
+
+    # retornando cadeia sem variaveis:
     else:
         return cadeia
+
 
 
 def detail_mode(gramatia: GLC):
@@ -241,7 +253,7 @@ while in_execution:
     if not gramatica_glc:  # caso o caminho seja invalido
         continue
 
-    print("Esoclha o Modo de funcionamento: ")
+    print("Escolha o Modo de funcionamento: ")
     try:
         modo_de_funcionamento = int(input("[1] Modo rapido\n[2] Modo detalhado\n-: "))
     except ValueError:
